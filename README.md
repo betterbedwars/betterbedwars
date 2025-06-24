@@ -1,4 +1,4 @@
-![Better Bedwars. Banner](https://cdn.modrinth.com/data/cached_images/ef780bf025d94df74f4bec4deb4aab1a9fe57cb3_0.webp) 
+![Better Bedwars. Banner](https://cdn.modrinth.com/data/cached_images/ef780bf025d94df74f4bec4deb4aab1a9fe57cb3_0.webp)  
 =
 
 ### **Early access / previews available via Discord by Server Boosting ↓** ###

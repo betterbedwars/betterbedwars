@@ -8,8 +8,9 @@ import random
 from datetime import datetime, timedelta
 import asyncio
 import time
+from difflib import SequenceMatcher
 
-GUILD_ID = 817429755456258068  # Replace with your server ID
+GUILD_ID = PLACEHOLDER  # Replace with your server ID
 
 # === Load token from .env ===
 load_dotenv()
@@ -17,7 +18,10 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 
 # === XP system ===
 XP_FILE = "xp_data.json"
+THRESHOLD_FILE = "similarity_threshold.json"
 cooldowns = {}
+recent_messages = {}  # Tracks last few messages per user
+default_similarity_threshold = 0.8
 
 # XP thresholds and associated rank roles
 ROLE_REWARDS = {
@@ -46,6 +50,13 @@ if os.path.exists(XP_FILE):
 else:
     xp_data = {}
 
+# Load similarity thresholds
+if os.path.exists(THRESHOLD_FILE):
+    with open(THRESHOLD_FILE, "r") as f:
+        similarity_thresholds = json.load(f)
+else:
+    similarity_thresholds = {}
+
 # === Setup Bot ===
 intents = discord.Intents.default()
 intents.message_content = True
@@ -63,6 +74,10 @@ def calculate_level(xp: int) -> int:
 def save_xp():
     with open(XP_FILE, "w") as f:
         json.dump(xp_data, f, indent=4)
+
+def save_thresholds():
+    with open(THRESHOLD_FILE, "w") as f:
+        json.dump(similarity_thresholds, f, indent=4)
 
 async def check_and_assign_role(member: discord.Member, xp: int):
     guild = member.guild
@@ -96,22 +111,21 @@ async def check_and_assign_role(member: discord.Member, xp: int):
             except discord.Forbidden:
                 print(f"⚠️ Cannot assign role {highest_role_name} to {member.name}")
 
+def is_message_unique(user_id: str, message_content: str, guild_id: int) -> bool:
+    threshold = similarity_thresholds.get(str(guild_id), default_similarity_threshold)
+    user_messages = recent_messages.get(user_id, [])
+
+    for old_msg in user_messages:
+        similarity = SequenceMatcher(None, message_content, old_msg).ratio()
+        if similarity >= threshold:
+            return False
+    return True
+
 # === Events ===
 @bot.event
 async def on_ready():
-    # This clears all global slash commands by syncing with no guild
     await bot.tree.sync()
-    print("✅ Cleared all global commands")
-
-    # Then sync guild commands normally if you want
-    for guild in bot.guilds:
-        try:
-            synced = await bot.tree.sync(guild=guild)
-            print(f"✅ Synced {len(synced)} command(s) to guild {guild.name} ({guild.id})")
-        except Exception as e:
-            print(f"❌ Failed to sync commands to guild {guild.name}: {e}")
-
-    print(f"✅ Logged in as {bot.user} (ID: {bot.user.id})")
+    print("✅ Bot is ready!")
 
 @bot.event
 async def on_message(message):
@@ -119,33 +133,52 @@ async def on_message(message):
         return
 
     user_id = str(message.author.id)
-    now = datetime.utcnow()
-
-    if user_id in cooldowns and now < cooldowns[user_id]:
-        return
-    cooldowns[user_id] = now + timedelta(seconds=60)
+    guild_id = message.guild.id
 
     if user_id not in xp_data:
-        xp_data[user_id] = {"xp": 0, "level": 0, "rank": None}  # add 'rank' key
+        xp_data[user_id] = {"xp": 0, "level": 0, "rank": None}
 
-    xp_earned = random.randint(5, 15)
-    xp_data[user_id]["xp"] += xp_earned
+    # Check similarity before giving XP
+    content = ''.join(filter(str.isalpha, message.content.lower()))
+    if not content:
+        await bot.process_commands(message)
+        return
 
-    # Calculate current rank based on XP
-    qualified_roles = [name for req_xp, (emoji, name) in ROLE_REWARDS.items() if xp_data[user_id]["xp"] >= req_xp]
-    current_rank = qualified_roles[-1] if qualified_roles else "Unranked"
+    if is_message_unique(user_id, content, guild_id):
+        xp_earned = random.randint(5, 15)
+        xp_data[user_id]["xp"] += xp_earned
 
-    # Announce only if rank changed
-    if xp_data[user_id].get("rank") != current_rank:
-        xp_data[user_id]["rank"] = current_rank
-        await message.channel.send(f"🎉 {message.author.mention} You have reached **{current_rank}** rank!")
+        # Update recent messages
+        if user_id not in recent_messages:
+            recent_messages[user_id] = []
+        recent_messages[user_id].append(content)
+        if len(recent_messages[user_id]) > 10:  # Keep last 10 messages
+            recent_messages[user_id].pop(0)
 
-    await check_and_assign_role(message.author, xp_data[user_id]["xp"])
+        # Calculate current rank
+        qualified_roles = [name for req_xp, (emoji, name) in ROLE_REWARDS.items() if xp_data[user_id]["xp"] >= req_xp]
+        current_rank = qualified_roles[-1] if qualified_roles else "Unranked"
+
+        if xp_data[user_id].get("rank") != current_rank:
+            xp_data[user_id]["rank"] = current_rank
+            await message.channel.send(f"🎉 {message.author.mention} You have reached **{current_rank}** rank!")
+
+        await check_and_assign_role(message.author, xp_data[user_id]["xp"])
 
     save_xp()
     await bot.process_commands(message)
 
 # === Slash Commands ===
+@bot.tree.command(name="similaritythreshold", description="Set the similarity threshold for XP (0-1)")
+@app_commands.describe(threshold="A value between 0.0 and 1.0")
+async def similarity_threshold(interaction: discord.Interaction, threshold: float):
+    if not 0 <= threshold <= 1:
+        await interaction.response.send_message("❌ Threshold must be between 0.0 and 1.0", ephemeral=True)
+        return
+    similarity_thresholds[str(interaction.guild.id)] = threshold
+    save_thresholds()
+    await interaction.response.send_message(f"✅ Similarity threshold set to {threshold}", ephemeral=True)
+
 @bot.tree.command(name="rank", description="Check your current XP and rank", guild=discord.Object(id=GUILD_ID))
 async def rank(interaction: discord.Interaction):
     user_id = str(interaction.user.id)
@@ -190,15 +223,13 @@ async def ranklist(interaction: discord.Interaction):
 @bot.tree.command(name="ping", description="Returns the ping of the bot and server latency", guild=discord.Object(id=GUILD_ID))
 async def ping(interaction: discord.Interaction):
     start = time.perf_counter()
-    await interaction.response.defer(ephemeral=False)  # Make initial ack public
+    await interaction.response.defer(ephemeral=False)
     end = time.perf_counter()
-
     bot_latency_ms = round(bot.latency * 1000)
     server_latency_ms = round((end - start) * 1000)
-
     await interaction.followup.send(
         f"🏓 Pong! Latency is {server_latency_ms}ms. Bot Latency is {bot_latency_ms}ms",
-        ephemeral=False  # Public message
+        ephemeral=False
     )
 
 @bot.tree.command(name="xprebuild", description="Rebuild XP from past messages and update roles", guild=discord.Object(id=GUILD_ID))
@@ -244,10 +275,8 @@ async def xprebuild(interaction: discord.Interaction):
             await check_and_assign_role(member, xp)
 
     save_xp()
-
     await interaction.followup.send(f"✅ Done! Processed {total_messages} messages from {len(users_seen)} users.", ephemeral=True)
 
-# === Leaderboard Command ===
 @bot.tree.command(name="leaderboard", description="Show top 10 users by XP", guild=discord.Object(id=GUILD_ID))
 async def leaderboard(interaction: discord.Interaction):
     guild = bot.get_guild(GUILD_ID)
@@ -255,24 +284,19 @@ async def leaderboard(interaction: discord.Interaction):
         await interaction.response.send_message("❌ Guild not found!", ephemeral=True)
         return
 
-    # Sort users by XP descending and get top 10
     sorted_xp = sorted(xp_data.items(), key=lambda x: x[1]["xp"], reverse=True)[:10]
-
     lines = []
     for i, (user_id, data) in enumerate(sorted_xp, start=1):
         member = guild.get_member(int(user_id))
         if not member:
             continue
-
         xp = data["xp"]
-        # Find rank emoji for this user's XP
         rank_emoji = ""
         for req_xp, (emoji, name) in sorted(ROLE_REWARDS.items()):
             if xp >= req_xp:
                 rank_emoji = emoji
             else:
                 break
-
         lines.append(f"**{i}.** {member.mention} — {xp} XP ⠀•⠀ **Rank:** {rank_emoji}")
 
     if not lines:

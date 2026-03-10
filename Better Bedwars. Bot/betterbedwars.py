@@ -9,8 +9,9 @@ from datetime import datetime, timedelta
 import asyncio
 import time
 from difflib import SequenceMatcher
+import re  # <-- Added for gibberish detection
 
-GUILD_ID = PLACEHOLDER  # Replace with your server ID
+GUILD_ID = 817429755456258068  # Replace with your server ID
 
 # === Load token from .env ===
 load_dotenv()
@@ -40,7 +41,7 @@ ROLE_REWARDS = {
     8200: ("<:Yellow:1079898837742801037>", "Yellow"),
     9800: ("<:Orange:1079898354722549842>", "Orange"),
     11500:("<:Red:1079897267059818608>", "Red"),
-    12000:("<a:Rainbow:1080253901288259626>", "Rainbow")  # animated emoji uses <a:...>
+    12000:("<a:Rainbow:1080253901288259626>", "Rainbow")
 }
 
 # Load XP data
@@ -84,14 +85,12 @@ async def check_and_assign_role(member: discord.Member, xp: int):
     if not guild:
         return
 
-    # Determine highest role user qualifies for
     qualified_roles = [name for req_xp, (emoji, name) in ROLE_REWARDS.items() if xp >= req_xp]
     highest_role_name = qualified_roles[-1] if qualified_roles else None
 
     if highest_role_name:
         new_role = discord.utils.get(guild.roles, name=highest_role_name)
 
-        # Remove old rank roles correctly
         for _, (_, role_name) in ROLE_REWARDS.items():
             role = discord.utils.get(guild.roles, name=role_name)
             if role and role in member.roles and role.name != highest_role_name:
@@ -100,7 +99,6 @@ async def check_and_assign_role(member: discord.Member, xp: int):
                 except discord.Forbidden:
                     print(f"⚠️ Cannot remove role {role.name} from {member}")
 
-        # Add new highest role if not present
         if new_role and new_role not in member.roles:
             try:
                 await member.add_roles(new_role)
@@ -121,6 +119,27 @@ def is_message_unique(user_id: str, message_content: str, guild_id: int) -> bool
             return False
     return True
 
+# === Gibberish / Spam Detection ===
+def is_meaningful_message(message: str) -> bool:
+    cleaned = re.sub(r'[^a-zA-Z\s]', '', message).strip().lower()
+
+    if len(cleaned) < 4:
+        return False
+
+    if re.search(r'(.)\1{3,}', cleaned):
+        return False
+
+    if not re.search(r'[aeiou]', cleaned):
+        return False
+
+    consonants = len(re.findall(r'[bcdfghjklmnpqrstvwxyz]', cleaned))
+    vowels = len(re.findall(r'[aeiou]', cleaned))
+
+    if vowels > 0 and consonants / vowels > 5:
+        return False
+
+    return True
+
 # === Events ===
 @bot.event
 async def on_ready():
@@ -138,9 +157,13 @@ async def on_message(message):
     if user_id not in xp_data:
         xp_data[user_id] = {"xp": 0, "level": 0, "rank": None}
 
-    # Check similarity before giving XP
     content = ''.join(filter(str.isalpha, message.content.lower()))
     if not content:
+        await bot.process_commands(message)
+        return
+
+    if not is_meaningful_message(message.content):
+        print(f"🚫 Ignored meaningless message from {message.author}: {message.content}")
         await bot.process_commands(message)
         return
 
@@ -148,14 +171,14 @@ async def on_message(message):
         xp_earned = random.randint(5, 15)
         xp_data[user_id]["xp"] += xp_earned
 
-        # Update recent messages
         if user_id not in recent_messages:
             recent_messages[user_id] = []
+
         recent_messages[user_id].append(content)
-        if len(recent_messages[user_id]) > 10:  # Keep last 10 messages
+
+        if len(recent_messages[user_id]) > 10:
             recent_messages[user_id].pop(0)
 
-        # Calculate current rank
         qualified_roles = [name for req_xp, (emoji, name) in ROLE_REWARDS.items() if xp_data[user_id]["xp"] >= req_xp]
         current_rank = qualified_roles[-1] if qualified_roles else "Unranked"
 
@@ -175,8 +198,10 @@ async def similarity_threshold(interaction: discord.Interaction, threshold: floa
     if not 0 <= threshold <= 1:
         await interaction.response.send_message("❌ Threshold must be between 0.0 and 1.0", ephemeral=True)
         return
+
     similarity_thresholds[str(interaction.guild.id)] = threshold
     save_thresholds()
+
     await interaction.response.send_message(f"✅ Similarity threshold set to {threshold}", ephemeral=True)
 
 @bot.tree.command(name="rank", description="Check your current XP and rank", guild=discord.Object(id=GUILD_ID))
@@ -186,6 +211,7 @@ async def rank(interaction: discord.Interaction):
     current_xp = data["xp"]
 
     sorted_rewards = sorted(ROLE_REWARDS.items())
+
     current_rank = "Unranked"
     next_rank = None
 
@@ -211,7 +237,9 @@ async def rank(interaction: discord.Interaction):
 @bot.tree.command(name="ranklist", description="Show all rank roles and their XP requirements")
 async def ranklist(interaction: discord.Interaction):
     lines = []
+
     sorted_ranks = sorted(ROLE_REWARDS.items(), key=lambda x: x[0])
+
     for xp, (emoji_name, rank_name) in sorted_ranks:
         lines.append(f"{emoji_name} **{rank_name}** — {xp} XP")
 
@@ -225,8 +253,10 @@ async def ping(interaction: discord.Interaction):
     start = time.perf_counter()
     await interaction.response.defer(ephemeral=False)
     end = time.perf_counter()
+
     bot_latency_ms = round(bot.latency * 1000)
     server_latency_ms = round((end - start) * 1000)
+
     await interaction.followup.send(
         f"🏓 Pong! Latency is {server_latency_ms}ms. Bot Latency is {bot_latency_ms}ms",
         ephemeral=False
@@ -267,7 +297,6 @@ async def xprebuild(interaction: discord.Interaction):
         except (discord.Forbidden, discord.HTTPException):
             print(f"⚠️ Can't access history for channel {channel.name}. Skipping.")
 
-    # Update roles based on rebuilt XP
     for user_id in users_seen:
         member = guild.get_member(int(user_id))
         if member:
@@ -286,6 +315,7 @@ async def leaderboard(interaction: discord.Interaction):
 
     sorted_xp = sorted(xp_data.items(), key=lambda x: x[1]["xp"], reverse=True)[:10]
     lines = []
+
     for i, (user_id, data) in enumerate(sorted_xp, start=1):
         member = guild.get_member(int(user_id))
         if not member:
@@ -309,6 +339,21 @@ async def leaderboard(interaction: discord.Interaction):
     )
 
     await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="say", description="Make the bot say something")
+async def say(interaction: discord.Interaction, message: str):
+
+    # acknowledge interaction but hide response
+    await interaction.response.defer(ephemeral=True)
+
+    # send the actual bot message
+    await interaction.channel.send(message)
+
+    # delete the temporary interaction response
+    try:
+        await interaction.delete_original_response()
+    except:
+        pass
 
 # === Run Bot ===
 if TOKEN:

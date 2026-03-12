@@ -77,11 +77,13 @@ If you ask a question that's already answered in the spoiler below, I will most 
 <br>
 – Watermelon hungerbar instead of the regular potato hungerbar
 <br>
+– Red XP Bar instead of the regular brown one
+<br>
 – Red settings background instead of the regular yellow one
 <br>
 – Red Better Bedwars bed instead of the regular yellow-colored one (These bed textures can only be seen if playing on a version prior to 1.12)
 <br>
-– Custom Skybox
+– A different Custom Skybox
 <br/><br/>
 **Q: Why can I not see the custom skybox on the Special Edition (SE) version of the pack?**
 <br>

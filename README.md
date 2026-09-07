@@ -55,7 +55,7 @@ If you ask a question that's already answered in the spoiler below, I will most 
 
 **Q: Can you make a version for 1.XX ? / The pack is warning me that it's made for another version of Minecraft.**
 <br>
-**A:** No, also don't worry. Better Bedwars is intended to work on all versions of the game, the only requirement is that it is a version after 1.8.9 and if using the Special Edition (SE) that you are using a compatibile version of OptiFine. So, feel free to play on whatever version you are most comfortable with, including the most recent version as this pack is always tested on both versions 1.8.9 and the most recent Minecraft release to check for any possible combatibility issues. Don't worry about the version warning! 
+**A:** No, also don't worry. Better Bedwars is intended to work on all versions of the game, the only requirement is that it is a version after 1.8.9 and if using the Special Edition (SE) that you are using a compatibile version of OptiFine. So, feel free to play on whatever version you are most comfortable with, including the most recent version as this pack is always tested on both versions 1.8.9 and the most recent Minecraft release to check for any possible combatibility issues. _Don't worry about the version warning!_ 
 <br/><br/>
 **Q: Can you make a Bedrock port?**
 <br>
@@ -73,7 +73,7 @@ If you ask a question that's already answered in the spoiler below, I will most 
 <br>
 **A:** The regular version and the Special Edition (SE) are fairly similar except for a few differences, which are listed below
 <br>
-– Soft red hearts instead of the regular yellow ones
+– Red hearts instead of the regular yellow ones
 <br>
 – Watermelon hungerbar instead of the regular potato hungerbar
 <br>
@@ -84,20 +84,22 @@ If you ask a question that's already answered in the spoiler below, I will most 
 – Red Better Bedwars bed instead of the regular yellow-colored one (These bed textures can only be seen if playing on a version prior to 1.12)
 <br>
 – A different Custom Skybox
+<br>
+_Note: The regular version also has a custom skybox, but it doesn't play as key of a role to the pack as the custom skybox does in the Special Edition (SE). However, if you want the custom skybox (the one that is pictured in the gallery images) you will need OptiFine or one of the previously mentioned mods/tools in order to do that._
 <br/><br/>
 **Q: Why can I not see the custom skybox on the Special Edition (SE) version of the pack?**
 <br>
-**A:** This can occur when you haven't installed the Optifine Mod correctly, or when Custom Sky is not enabled in Video Settings. The required settings are as follows:
+**A:** This can occur when you haven't installed the OptiFine Mod correctly, or when Custom Sky is not enabled in Video Settings. The required settings are as follows:
 <br>
       _Video Settings > Quality > Custom Sky: ON_
 <br>
 **A:** This can also happen with using some 3rd party clients.
 <br>
-**A:** Also make sure you're using the right Optifine version.
+**A:** Also make sure you're using the right OptiFine version.
 <br/><br/>
 **Q: Is there a way to use Better Bedwars: Special Edition (SE) without OptiFine?**
 <br>
-**A:** Better Bedwars: Special Edition (SE) requires Optifine for features like Custom Sky to work. If you don't want to use OptiFine, but still want to use the Special Edition (SE) version of the pack, then you can use some OptiFine Custom Sky alternative mods like [<u>ForgeSkyboxes</u>](https://www.curseforge.com/minecraft/mc-mods/forgeskyboxes) (along with a tool called [<u>MCPPPP</u>](https://github.com/supsm/MCPPPP) which is needed in order to convert this pack to use FSB formatted skies) or [<u>FabricSkyboxes</u>](https://www.curseforge.com/minecraft/mc-mods/fabricskyboxes) (combined with the [<u>FabricSkyboxes Interop</u>](https://www.curseforge.com/minecraft/mc-mods/fabricskyboxes-interop) addon mod). Keep in mind that this pack has not been tested with these mods and conflicts could arise.
+**A:** Better Bedwars: Special Edition (SE) requires OptiFine for features like Custom Sky to work. If you don't want to use OptiFine, but still want to use the Special Edition (SE) version of the pack, then you can use some OptiFine Custom Sky alternative mods like [<u>ForgeSkyboxes</u>](https://www.curseforge.com/minecraft/mc-mods/forgeskyboxes) (along with a tool called [<u>MCPPPP</u>](https://github.com/supsm/MCPPPP) which is needed in order to convert this pack to use FSB formatted skies) or [<u>Nuit</u>](https://www.curseforge.com/minecraft/mc-mods/nuit) (combined with the [<u>Nuit Interop</u>](https://www.curseforge.com/minecraft/mc-mods/nuit-interop) addon mod) or even [<u>Skyboxify</u>](https://www.curseforge.com/minecraft/mc-mods/skyboxify). _Keep in mind that this pack has not been tested with these mods and conflicts could arise._
 <br/><br/>
 **Q: I found a bug/issue with Better Bedwars. What should I do?**
 <br>
